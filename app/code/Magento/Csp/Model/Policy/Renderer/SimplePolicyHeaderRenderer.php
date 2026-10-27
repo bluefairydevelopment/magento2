@@ -11,7 +11,9 @@ use Magento\Csp\Api\Data\ModeConfiguredInterface;
 use Magento\Csp\Api\Data\PolicyInterface;
 use Magento\Csp\Api\ModeConfigManagerInterface;
 use Magento\Csp\Api\PolicyRendererInterface;
+use Magento\Csp\Model\Mode\ReportingEndpointConfig;
 use Magento\Csp\Model\Policy\SimplePolicyInterface;
+use Magento\Framework\App\ObjectManager;
 use Magento\Framework\App\Response\HttpInterface as HttpResponse;
 
 /**
@@ -29,11 +31,21 @@ class SimplePolicyHeaderRenderer implements PolicyRendererInterface
     private $modeConfig;
 
     /**
-     * @param ModeConfigManagerInterface $modeConfig
+     * @var ReportingEndpointConfig
      */
-    public function __construct(ModeConfigManagerInterface $modeConfig)
-    {
+    private $reportingEndpointConfig;
+
+    /**
+     * @param ModeConfigManagerInterface $modeConfig
+     * @param ReportingEndpointConfig|null $reportingEndpointConfig
+     */
+    public function __construct(
+        ModeConfigManagerInterface $modeConfig,
+        ?ReportingEndpointConfig $reportingEndpointConfig = null
+    ) {
         $this->modeConfig = $modeConfig;
+        $this->reportingEndpointConfig = $reportingEndpointConfig
+            ?? ObjectManager::getInstance()->get(ReportingEndpointConfig::class);
     }
 
     /**
@@ -49,10 +61,15 @@ class SimplePolicyHeaderRenderer implements PolicyRendererInterface
             $header = 'Content-Security-Policy';
         }
         $value = $policy->getId() .' ' .$policy->getValue() .';';
-        if ($config->getReportUri() && !$response->getHeader(self::REPORTING_ENDPOINTS_HEADER)) {
-            $value .= ' report-uri ' .$config->getReportUri() .';';
+        $reportUri = $config->getReportUri();
+        // The Reporting API endpoint can be configured apart from report-uri; it falls back to the report-uri URL.
+        $reportingEndpoint = $this->reportingEndpointConfig->getEndpointUrl() ?? $reportUri;
+        if ($reportingEndpoint && !$response->getHeader(self::REPORTING_ENDPOINTS_HEADER)) {
+            if ($reportUri) {
+                $value .= ' report-uri ' .$reportUri .';';
+            }
             $value .= ' report-to ' .self::REPORTING_GROUP .';';
-            $endpoint = str_replace(['\\', '"'], ['\\\\', '\\"'], $config->getReportUri());
+            $endpoint = str_replace(['\\', '"'], ['\\\\', '\\"'], $reportingEndpoint);
             $response->setHeader(
                 self::REPORTING_ENDPOINTS_HEADER,
                 self::REPORTING_GROUP .'="' .$endpoint .'"',

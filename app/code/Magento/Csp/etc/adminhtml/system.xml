@@ -20,12 +20,22 @@
                         <comment>URI to report CSP violations on storefront. Used for all storefront pages that don't have own URI configured above.</comment>
                         <validate>validate-url</validate>
                     </field>
+                    <field id="report_to" translate="label comment" type="text" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Reporting API Endpoint</label>
+                        <comment>URL that browsers using the Reporting API (the report-to directive) send storefront CSP reports to, in that API's format. Used for all storefront pages that don't have their own endpoint configured above. If empty, the Report URI is used.</comment>
+                        <validate>validate-url</validate>
+                    </field>
                 </group>
                 <group id="admin" translate="label" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Admin Default</label>
                     <field id="report_uri" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                         <label>Report URI</label>
                         <comment>URI to report CSP violations in admin area. Used for all admin pages that don't have own URI configured above.</comment>
+                        <validate>validate-url</validate>
+                    </field>
+                    <field id="report_to" translate="label comment" type="text" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Reporting API Endpoint</label>
+                        <comment>URL that browsers using the Reporting API (the report-to directive) send admin CSP reports to, in that API's format. Used for all admin pages that don't have their own endpoint configured above. If empty, the Report URI is used.</comment>
                         <validate>validate-url</validate>
                     </field>
                 </group>

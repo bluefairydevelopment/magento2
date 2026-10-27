@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace Magento\Csp\Model\Policy\Renderer;
 
+use Magento\Framework\App\Request\Http;
 use Magento\Csp\Model\Policy\FetchPolicy;
 use Magento\TestFramework\Helper\Bootstrap;
 use PHPUnit\Framework\TestCase;
@@ -212,5 +213,94 @@ class SimplePolicyHeaderRendererTest extends TestCase
             $this->response->getHeader('Reporting-Endpoints')->getFieldValue()
         );
         $this->assertEmpty($this->response->getHeader('Report-To'));
+    }
+
+    /**
+     * Test that a separately configured Reporting API endpoint is registered while report-uri keeps its own URL.
+     *
+     * @magentoAppArea frontend
+     * @magentoConfigFixture default_store csp/mode/storefront/report_only 1
+     * @magentoConfigFixture default_store csp/mode/storefront/report_uri https://reports.example.com/csp
+     * @magentoConfigFixture default_store csp/mode/storefront/report_to https://reports.example.com/reporting-api
+     *
+     * @return void
+     */
+    public function testRenderWithSeparateReportingEndpoint(): void
+    {
+        $this->renderer->render(
+            new FetchPolicy('default-src', false, ['https://magento.com'], [], true),
+            $this->response
+        );
+
+        $this->assertNotEmpty($header = $this->response->getHeader('Content-Security-Policy-Report-Only'));
+        $this->assertEquals(
+            'default-src https://magento.com \'self\';'
+            . ' report-uri https://reports.example.com/csp; report-to report-endpoint;',
+            $header->getFieldValue()
+        );
+        $this->assertEquals(
+            'report-endpoint="https://reports.example.com/reporting-api"',
+            $this->response->getHeader('Reporting-Endpoints')->getFieldValue()
+        );
+    }
+
+    /**
+     * Test that a Reporting API endpoint alone adds report-to without report-uri.
+     *
+     * @magentoAppArea frontend
+     * @magentoConfigFixture default_store csp/mode/storefront/report_only 1
+     * @magentoConfigFixture default_store csp/mode/storefront/report_to https://reports.example.com/reporting-api
+     *
+     * @return void
+     */
+    public function testRenderWithReportingEndpointOnly(): void
+    {
+        $this->renderer->render(
+            new FetchPolicy('default-src', false, ['https://magento.com'], [], true),
+            $this->response
+        );
+
+        $this->assertNotEmpty($header = $this->response->getHeader('Content-Security-Policy-Report-Only'));
+        $this->assertEquals(
+            'default-src https://magento.com \'self\'; report-to report-endpoint;',
+            $header->getFieldValue()
+        );
+        $this->assertEquals(
+            'report-endpoint="https://reports.example.com/reporting-api"',
+            $this->response->getHeader('Reporting-Endpoints')->getFieldValue()
+        );
+    }
+
+    /**
+     * Test that a page with its own report URI keeps its Reporting API reports when the area has an endpoint.
+     *
+     * @magentoAppArea frontend
+     * @magentoConfigFixture default_store csp/mode/storefront/report_to https://reports.example.com/all
+     * @magentoConfigFixture default_store csp/mode/storefront_checkout_index_index/report_uri https://r.example/checkout
+     *
+     * @return void
+     */
+    public function testRenderPageReportUriBeatsAreaReportingEndpoint(): void
+    {
+        Bootstrap::getObjectManager()->get(Http::class)
+            ->setRouteName('checkout')
+            ->setControllerName('index')
+            ->setActionName('index');
+
+        $this->renderer->render(
+            new FetchPolicy('default-src', false, ['https://magento.com'], [], true),
+            $this->response
+        );
+
+        $this->assertEquals(
+            'default-src https://magento.com \'self\';'
+            . ' report-uri https://r.example/checkout; report-to report-endpoint;',
+            // Checkout enforces its policy (Magento_Checkout config.xml sets report_only 0 for this page).
+            $this->response->getHeader('Content-Security-Policy')->getFieldValue()
+        );
+        $this->assertEquals(
+            'report-endpoint="https://r.example/checkout"',
+            $this->response->getHeader('Reporting-Endpoints')->getFieldValue()
+        );
     }
 }

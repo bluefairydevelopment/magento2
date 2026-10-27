@@ -120,6 +120,11 @@
                         <comment>If empty, Default Report URI for storefront will be used.</comment>
                         <validate>validate-url</validate>
                     </field>
+                    <field id="report_to" translate="label comment" type="text" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
+                        <label>Reporting API Endpoint</label>
+                        <comment>If empty, this page's Report URI is used when set, otherwise the default Reporting API Endpoint for storefront.</comment>
+                        <validate>validate-url</validate>
+                    </field>
                 </group>
             </group>
         </section>
